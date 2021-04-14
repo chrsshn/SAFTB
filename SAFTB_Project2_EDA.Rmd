@@ -5,3 +5,299 @@ date: "4/13/2021"
 output: html_document
 ---
 
+```{r}
+#Packages
+library(tidyverse)
+library(circular)
+library(readxl)
+library(lubridate)
+library(MASS)
+library(mice)
+library(gridExtra)
+library(gtsummary)
+library(psych)
+```
+
+
+```{r}
+### Reading in the data ###
+base.df = read_excel(path = "SAFTB_crossover_data.xlsx", col_types = 
+                    c("text", "text", "text", "text", "numeric", "numeric", "numeric",
+                      "date", "text"), range = cell_rows(1:76))
+
+base.df.john = read_excel(path = "SAFTB_crossover_data.xlsx", col_types = 
+                    c("text", "text", "text", "text", "numeric", "numeric", "numeric",
+                      "text", "text"))
+
+
+
+cov.df = read_excel(path = "SAFTB_baseline_data.xlsx", col_types = 
+                    c("text", "numeric", "numeric", "numeric", "numeric","numeric",
+                      "numeric","numeric","numeric","numeric","numeric","numeric",
+                      "numeric","text"))
+
+### Processing John's Data ###
+
+#Select on John's data
+base.df.john =base.df.john[76:100,]
+
+#Turn 1st pickup = "on all night" to NAs
+base.df.john$`1st.Pickup`[base.df.john$`1st.Pickup` == "on all night"] = NA
+
+#Take midpoint of 1st pickup ranges
+base.df.john = base.df.john %>%
+    mutate(t1 = sapply(strsplit(`1st.Pickup`, "[-]"), "[[", 1),
+           midpoint = as.POSIXct(t1, format="%H:%M") + hours(1))
+
+#Replace 1st.pickup, get rid of helper rows and combine both dfs
+base.df.john$`1st.Pickup` = base.df.john$midpoint 
+
+base.df.john = base.df.john[1:9]
+
+base.df = rbind(base.df,base.df.john)
+
+#Impute missing 1st.pickup times - TODO
+
+```
+
+
+```{r}
+### Other Data Processing ###
+
+#Add index, score, angular pickup time variables
+base.df = base.df %>%
+  mutate(index = rep(1:25,4),
+         score = 0.4*Tot.Scr.Time + 0.6*Pickups,
+         Pickup.1st.angular = (hour(`1st.Pickup`)*60+minute(`1st.Pickup`))/(24*60)*360)
+```
+
+
+```{r}
+#Descriptive stats
+base.df %>% 
+  select(Period, Tot.Scr.Time, Tot.Soc.Time, Pickups, score, Pickup.1st.angular) %>%
+  tbl_summary(by = Period) %>%
+  add_p() %>%
+  add_overall() %>%
+  modify_spanning_header(c("stat_1", "stat_2", "stat_3", "stat_4") ~ "**Period**")
+
+base.df %>% 
+  select(ID, Tot.Scr.Time, Tot.Soc.Time, Pickups, score, Pickup.1st.angular) %>%
+  tbl_summary(by = ID) %>%
+  add_p() %>%
+  add_overall() %>%
+  modify_spanning_header(c("stat_1", "stat_2", "stat_3", "stat_4") ~ "**ID**")
+
+
+```
+Pickups component seems to be driving significant difference seen in score. 
+
+```{r}
+#Combined DF - Period
+period.df = base.df %>%
+  group_by(Period) %>%
+  summarise(TST.med = median(Tot.Scr.Time),
+            Pickup.med = median(Pickups),
+            Score.med = median(score),
+            Change = (Score.med - 176.2)/176.2)
+
+period.df
+
+#Combined DF - Period and ID
+dylan.df = base.df %>%
+  filter(ID == "clarkbou") %>%
+  group_by(Period) %>%
+  summarise(TST.med = median(Tot.Scr.Time),
+            Pickup.med = median(Pickups),
+            Score.med = median(score),
+            Change = (Score.med - 182.4)/182.4)
+
+
+dylan.df = cbind(Name = rep("Dylan",4), dylan.df)
+
+chris.df = base.df %>%
+  filter(ID == "shincd") %>%
+  group_by(Period) %>%
+  summarise(TST.med = median(Tot.Scr.Time),
+            Pickup.med = median(Pickups),
+            Score.med = median(score),
+            Change = (Score.med - 195.3)/195.3)
+
+chris.df = cbind(Name = rep("Chris",4), chris.df)
+
+john.df = base.df %>%
+  filter(ID == "tsirigoj") %>%
+  group_by(Period) %>%
+  summarise(TST.med = median(Tot.Scr.Time),
+            Pickup.med = median(Pickups),
+            Score.med = median(score),
+            Change = (Score.med - 177.9)/177.9)
+
+john.df = cbind(Name = rep("John",4), john.df)
+
+spencer.df = base.df %>%
+  filter(ID == "srhaup") %>%
+  group_by(Period) %>%
+  summarise(TST.med = median(Tot.Scr.Time),
+            Pickup.med = median(Pickups),
+            Score.med = median(score),
+            Change = (Score.med - 126.0)/126.0)
+
+spencer.df = cbind(Name = rep("Spencer",4), spencer.df)
+
+id.df = rbind(dylan.df,chris.df,john.df,spencer.df)
+id.df %>%
+  arrange(Period)
+```
+We saw an overall decrease of about 20% in score during intervention periods.
+P1 had a slightly larger treatment effect. 
+
+```{r}
+#Boxplot of relevant variables by period
+box.TST = base.df %>%
+    ggplot(aes(x = Period, y = Tot.Scr.Time))+
+    geom_boxplot()
+
+box.pickups = base.df %>%
+    ggplot(aes(x = Period, y = Pickups))+
+    geom_boxplot()
+
+box.score = base.df %>%
+    ggplot(aes(x = Period, y = score))+
+    geom_boxplot()
+
+require(gridExtra)
+grid.arrange(box.TST, box.pickups, box.score, ncol = 3)
+```
+
+```{r fig.height=5, fig.width=10}
+#Boxplots by period and ID
+box.TST2 = base.df %>%
+    ggplot(aes(x = Period, y = Tot.Scr.Time, color = ID))+
+    geom_boxplot()
+
+box.pickups2 = base.df %>%
+    ggplot(aes(x = Period, y = Pickups, color = ID))+
+    geom_boxplot()
+
+box.score2 = base.df %>%
+    ggplot(aes(x = Period, y = score, color = ID))+
+    geom_boxplot()
+
+require(gridExtra)
+grid.arrange(box.TST2, box.pickups2, box.score2, ncol = 3)
+
+```
+Pretty similar shapes here.
+ 
+```{r fig.width = 10, fig.height = 5}
+#Histograms by Period
+hist.TST = base.df %>%
+    ggplot(aes(x = Tot.Scr.Time))+
+    geom_histogram()
+
+hist.pickups = base.df %>%
+    ggplot(aes(x = Pickups))+
+    geom_histogram()
+
+hist.score = base.df %>%
+    ggplot(aes(x = score))+
+    geom_histogram()
+
+require(gridExtra)
+grid.arrange(hist.TST, hist.pickups, hist.score, ncol = 3)
+```
+This is just histogram of the three variables of interest. Grouping by period 
+or ID just looks messy and is not very informative.
+  
+```{r}
+#Time Series
+rect1 = data.frame(xmin=15,xmax=18, ymin=-Inf, ymax=Inf)
+rect2 = data.frame(xmin=22,xmax=25, ymin=-Inf, ymax=Inf)
+
+base.df %>%
+  ggplot(aes(x = index, y = score, color = ID))+
+  geom_line()+
+  geom_rect(data=rect1, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax),
+            fill = "blue",
+            alpha=0.25, 
+            inherit.aes = FALSE)+
+  geom_rect(data=rect2, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax),
+            fill = "red",
+            alpha=0.25, 
+            inherit.aes = FALSE)+
+  geom_label(label = "Intervention A",
+             x=16.5,
+             y=250,
+             label.padding = unit(0.15,"lines"),
+             label.size = 0.25,
+             color = "blue",
+             inherit.aes=FALSE,
+             size=3)+
+  geom_label(label = "Intervention B",
+             x=23.5,
+             y=250,
+             label.padding = unit(0.15,"lines"),
+             label.size = 0.25,
+             color = "red",
+             inherit.aes=FALSE,
+             size=3)
+  
+  
+
+```
+```{r}
+#Corrplot
+corr.df = base.df %>%
+  select(Period, Tot.Scr.Time,Tot.Soc.Time,Pickups,score,Pickup.1st.angular) %>%
+  na.omit
+
+corr.df$Period = as.factor(corr.df$Period)
+
+pairs.panels(corr.df, method = "pearson",
+             hist.col = "#00AFBB",
+             density = TRUE,
+             ellipses = FALSE,
+             gap= 0,
+             pch = ".")
+```
+
+
+```{r}
+#ACF
+acf.df = base.df %>%
+  group_by(index) %>%
+  summarise(med.score = median(score))
+
+acf(acf.df$med.score)
+```
+Not really sure what to do here
+
+```{r}
+#Circular plot
+cir.df.Spencer = circular(base.df$Pickup.1st.angular[base.df$ID == "srhaup"], units = "degrees", template = "clock24")
+cir.plot.Spencer = plot(cir.df.Spencer, col="blue")
+
+cir.df.Chris = circular(base.df$Pickup.1st.angular[base.df$ID == "shincd"], units = "degrees", template = "clock24")
+cir.plot.Chris = plot(cir.df.Chris, col="blue")
+
+cir.df.John = circular(base.df$Pickup.1st.angular[base.df$ID == "tsirigoj"], units = "degrees", template = "clock24")
+cir.plot.John = plot(cir.df.John, col="blue")
+
+cir.df.Dylan = circular(base.df$Pickup.1st.angular[base.df$ID == "clarkbou"], units = "degrees", template = "clock24")
+cir.plot.Dylan = plot(cir.df.Chris, col="blue")
+
+plot(cir.df.Spencer, cir.df.Chris, cir.df.John,cir.df.Dylan,fill = c("blue", "red", "orange", "green"))
+
+```
+```
+
+
+
+
+
+
+
+
+
+
