@@ -35,7 +35,9 @@ cov.df = read_excel(path = "SAFTB_baseline_data.xlsx", col_types =
                     c("text", "numeric", "numeric", "numeric", "numeric","numeric",
                       "numeric","numeric","numeric","numeric","numeric","numeric",
                       "numeric","text"))
+```
 
+```{r}
 ### Processing John's Data ###
 
 #Select on John's data
@@ -47,16 +49,23 @@ base.df.john$`1st.Pickup`[base.df.john$`1st.Pickup` == "on all night"] = NA
 #Take midpoint of 1st pickup ranges
 base.df.john = base.df.john %>%
     mutate(t1 = sapply(strsplit(`1st.Pickup`, "[-]"), "[[", 1),
-           midpoint = as.POSIXct(t1, format="%H:%M") + hours(1))
+           midpoint = as.POSIXct(t1, format="%H:%M",tz = "UTC") + hours(1))
 
-#Replace 1st.pickup, get rid of helper rows and combine both dfs
+#Replace 1st.pickup, get rid of helper rows
 base.df.john$`1st.Pickup` = base.df.john$midpoint 
 
 base.df.john = base.df.john[1:9]
 
-base.df = rbind(base.df,base.df.john)
+#Impute missing 1st.pickup times
+base.df.john = base.df.john %>%
+  mutate(Pickup.1st.angular = 
+           (hour(`1st.Pickup`)*60+minute(`1st.Pickup`))/(24*60)*360)
 
-#Impute missing 1st.pickup times - TODO
+imp.df = mice(subset(base.df.john, select = -`1st.Pickup`))
+comp.pickup = complete(imp.df)
+
+base.df.john$Pickup.1st.angular = comp.pickup$Pickup.1st.angular
+
 
 ```
 
@@ -64,16 +73,22 @@ base.df = rbind(base.df,base.df.john)
 ```{r}
 ### Other Data Processing ###
 
-#Add index, score, angular pickup time variables
+#Add angular pickup time variables
+base.df = base.df %>%
+  mutate(Pickup.1st.angular = (hour(`1st.Pickup`)*60+minute(`1st.Pickup`))/(24*60)*360)
+
+#Combine both dfs
+base.df = rbind(base.df,base.df.john)
+
+#Add index and score
 base.df = base.df %>%
   mutate(index = rep(1:25,4),
-         score = 0.4*Tot.Scr.Time + 0.6*Pickups,
-         Pickup.1st.angular = (hour(`1st.Pickup`)*60+minute(`1st.Pickup`))/(24*60)*360)
+         score = 0.4*Tot.Scr.Time + 0.6*Pickups)
 ```
 
 
 ```{r}
-#Descriptive stats
+#### Descriptive stats ####
 base.df %>% 
   select(Period, Tot.Scr.Time, Tot.Soc.Time, Pickups, score, Pickup.1st.angular) %>%
   tbl_summary(by = Period) %>%
@@ -153,6 +168,8 @@ We saw an overall decrease of about 20% in score during intervention periods.
 P1 had a slightly larger treatment effect. 
 
 ```{r}
+### Plots ###
+
 #Boxplot of relevant variables by period
 box.TST = base.df %>%
     ggplot(aes(x = Period, y = Tot.Scr.Time))+
@@ -264,30 +281,31 @@ pairs.panels(corr.df, method = "pearson",
 
 
 ```{r}
-#ACF
+#ACF - overall
 acf.df = base.df %>%
   group_by(index) %>%
   summarise(med.score = median(score))
 
 acf(acf.df$med.score)
+
+
 ```
-Not really sure what to do here
+
 
 ```{r}
 #Circular plot
 cir.df.Spencer = circular(base.df$Pickup.1st.angular[base.df$ID == "srhaup"], units = "degrees", template = "clock24")
-cir.plot.Spencer = plot(cir.df.Spencer, col="blue")
+plot(cir.df.Spencer, col="blue")
 
 cir.df.Chris = circular(base.df$Pickup.1st.angular[base.df$ID == "shincd"], units = "degrees", template = "clock24")
-cir.plot.Chris = plot(cir.df.Chris, col="blue")
+plot(cir.df.Chris, col="blue")
 
 cir.df.John = circular(base.df$Pickup.1st.angular[base.df$ID == "tsirigoj"], units = "degrees", template = "clock24")
-cir.plot.John = plot(cir.df.John, col="blue")
+plot(cir.df.John, col="blue")
 
 cir.df.Dylan = circular(base.df$Pickup.1st.angular[base.df$ID == "clarkbou"], units = "degrees", template = "clock24")
-cir.plot.Dylan = plot(cir.df.Chris, col="blue")
+plot(cir.df.Dylan, col="blue")
 
-plot(cir.df.Spencer, cir.df.Chris, cir.df.John,cir.df.Dylan,fill = c("blue", "red", "orange", "green"))
 
 ```
 ```
