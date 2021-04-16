@@ -1,14 +1,30 @@
-df<-read.csv("C://Users//tsiri//OneDrive//Desktop//BIOSTAT620//Project2//SAFTB_Crossover_Data.csv")
-setwd("C://Users//tsiri//OneDrive//Desktop//BIOSTAT620//Project2//SAFTB")
-attach(df)
+### Libraries ###
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(gtsummary)
+
+
+
+# Below is John's way to read in data
+#df<-read.csv("C://Users//tsiri//OneDrive//Desktop//BIOSTAT620//Project2//SAFTB_Crossover_Data.csv")
+#setwd("C://Users//tsiri//OneDrive//Desktop//BIOSTAT620//Project2//SAFTB")
+#attach(df)
+
+#Below is Spencer's way to read in the data
+df = read_excel(path = "SAFTB_crossover_data.xlsx", col_types = 
+                       c("text", "text", "text", "text", "numeric", "numeric", "numeric",
+                         "date", "text"))
+
 #Create score variable
 i=0
 df$score=0
 
 for (i in 1:length(df$Pickups)){
-  df$score[i]=round((0.6*df$Tot.Scr.Time[i])+(0.4*df$Pickups[i]),3)
+  df$score[i]=round((0.4*df$Tot.Scr.Time[i])+(0.6*df$Pickups[i]),3)
   i=i+1
 }
+
 
 #model 1
 model1<-lm(score~ID,data=df)
@@ -111,3 +127,50 @@ summary(model6)
 (anova(model2,model6))
 (anova(model6))
 
+### Renaming for tables ###
+df2 = df %>%
+  rename(Subject = ID) %>%
+  mutate(
+    Subject = case_when(Subject == "clarkbou" ~ "1",
+                        Subject == "shincd" ~ "2",
+                        Subject == "srhaup" ~ "3",
+                        Subject == "tsirigoj" ~ "4"))
+
+### Rerun models with new names ###
+#model 2
+model2a<-lm(score~Subject+Period,data=df2)
+
+
+#model3
+model3a<-lm(score~Subject+Period+Day,data=df2)
+
+
+#testing significance of added variable
+(anova2a<-anova(model2a,model3a)) #no significance
+
+
+### Tables ###
+t2 = model2a %>%
+  tbl_regression() %>%
+  bold_p(t=0.05) %>%
+  modify_header(label ~ "**Variable**") %>%
+  modify_footnote(p.value ~ "Significant values in bold")
+
+t3 = model3a %>%
+  tbl_regression() %>%
+  bold_p(t=0.05)%>%
+  modify_header(label ~ "**Variable**") %>%
+  modify_footnote(p.value ~ "Significant values in bold")
+
+tbl_merge(tbls = list(t2,t3),tab_spanner = c("**Model 1**", "**Model 2**")) %>%
+  as_gt() %>%
+  gt::tab_header(title = "Table 3. Regression Results")
+
+
+### Weekday vs Weekend ###
+df2 = df2 %>%
+  mutate(Weekend = ifelse(Day == "Sa" | Day == "Su","Yes", "No"))
+
+model3b<-lm(score~Subject+Period+Weekend,data=df2)
+summary(model3b)
+  
