@@ -115,9 +115,14 @@ base.df %>%
   add_p() %>%
   add_overall() %>%
   modify_spanning_header(c("stat_1", "stat_2", "stat_3", "stat_4") ~ "**ID**") %>%
-  modify_header(label ~ "**Variable**") %>%
+  modify_header(update=list(
+                label ~ "**Variable**",
+                stat_1 ~ "**Subject 1**",
+                stat_2 ~ "**Subject 2**",
+                stat_3 ~ "**Subject 3**",
+                stat_4 ~ "**Subject 4**")) %>%
   as_gt() %>%
-  gt::tab_header(title = "Table S1. Descriptive Statistics by ID")
+  gt::tab_header(title = "Table S1. Descriptive Statistics by Subject")
 
 
 
@@ -212,19 +217,22 @@ grid.arrange(box.TST, box.pickups, box.score, ncol = 3, top=textGrob("Figure S1.
 box.TST2 = base.df %>%
     ggplot(aes(x = Period, y = Tot.Scr.Time, color = ID))+
     geom_boxplot()+
-    labs(y = "Total Screen Time")
+    labs(y = "Total Screen Time")+
+    scale_color_discrete(name = "Subject", labels=c(1,2,3,4))
 
 box.pickups2 = base.df %>%
     ggplot(aes(x = Period, y = Pickups, color = ID))+
-    geom_boxplot()
+    geom_boxplot()+
+    scale_color_discrete(name = "Subject", labels=c(1,2,3,4))
 
 box.score2 = base.df %>%
     ggplot(aes(x = Period, y = score, color = ID))+
     geom_boxplot()+
-    labs(y = "Total Usage")
+    labs(y = "Total Usage")+
+    scale_color_discrete(name = "Subject", labels=c(1,2,3,4))
 
 require(gridExtra)
-grid.arrange(box.TST2, box.pickups2, box.score2, ncol = 3, top=textGrob("Figure S2. Boxplots of Total Screen Time, Pickups, and Total Usage by Period and ID"))
+grid.arrange(box.TST2, box.pickups2, box.score2, ncol = 3, top=textGrob("Figure S2. Boxplots of Total Screen Time, Pickups, and Total Usage by Period and Subject"))
 
 ```
 Pretty similar shapes here.
@@ -281,8 +289,9 @@ base.df %>%
              color = "red",
              inherit.aes=FALSE,
              size=3)+
-  ggtitle("Total Usage Over Time")+
-  labs(x = "Day", y="Total Usage")
+  ggtitle("Figure 1. Total Usage Over Time")+
+  labs(x = "Day", y="Total Usage")+
+  scale_color_discrete(name = "Subject", labels=c(1,2,3,4))
 
 
   
