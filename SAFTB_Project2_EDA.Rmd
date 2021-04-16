@@ -16,6 +16,8 @@ library(mice)
 library(gridExtra)
 library(gtsummary)
 library(psych)
+library(webshot)
+library(grid)
 ```
 
 
@@ -91,17 +93,33 @@ base.df = base.df %>%
 #### Descriptive stats ####
 base.df %>% 
   select(Period, Tot.Scr.Time, Tot.Soc.Time, Pickups, score, Pickup.1st.angular) %>%
-  tbl_summary(by = Period) %>%
+  tbl_summary(by = Period, missing_text="(Missing)",
+              label = list(Tot.Scr.Time ~ "Total Screen Time",
+                           Tot.Soc.Time ~ "Total Social Time",
+                           score ~ "Total Usage",
+                           Pickup.1st.angular ~ "1st Pickup (Angular)")) %>%
   add_p() %>%
   add_overall() %>%
-  modify_spanning_header(c("stat_1", "stat_2", "stat_3", "stat_4") ~ "**Period**")
+  modify_spanning_header(c("stat_1", "stat_2", "stat_3", "stat_4") ~ "**Period**") %>%
+  modify_header(label ~ "**Variable**") %>%
+  as_gt() %>%
+  gt::tab_header(title = "Table 1. Descriptive Statistics")
 
 base.df %>% 
   select(ID, Tot.Scr.Time, Tot.Soc.Time, Pickups, score, Pickup.1st.angular) %>%
-  tbl_summary(by = ID) %>%
+  tbl_summary(by = ID, missing_text="(Missing)",
+              label = list(Tot.Scr.Time ~ "Total Screen Time",
+                           Tot.Soc.Time ~ "Total Social Time",
+                           score ~ "Total Usage",
+                           Pickup.1st.angular ~ "1st Pickup (Angular)")) %>%
   add_p() %>%
   add_overall() %>%
-  modify_spanning_header(c("stat_1", "stat_2", "stat_3", "stat_4") ~ "**ID**")
+  modify_spanning_header(c("stat_1", "stat_2", "stat_3", "stat_4") ~ "**ID**") %>%
+  modify_header(label ~ "**Variable**") %>%
+  as_gt() %>%
+  gt::tab_header(title = "Table S1. Descriptive Statistics by ID")
+
+
 
 
 ```
@@ -173,7 +191,8 @@ P1 had a slightly larger treatment effect.
 #Boxplot of relevant variables by period
 box.TST = base.df %>%
     ggplot(aes(x = Period, y = Tot.Scr.Time))+
-    geom_boxplot()
+    geom_boxplot()+
+    labs(y = "Total Screen Time")
 
 box.pickups = base.df %>%
     ggplot(aes(x = Period, y = Pickups))+
@@ -181,17 +200,19 @@ box.pickups = base.df %>%
 
 box.score = base.df %>%
     ggplot(aes(x = Period, y = score))+
-    geom_boxplot()
+    geom_boxplot()+
+    labs(y = "Total Usage")
 
 require(gridExtra)
-grid.arrange(box.TST, box.pickups, box.score, ncol = 3)
+grid.arrange(box.TST, box.pickups, box.score, ncol = 3, top=textGrob("Figure S1. Boxplots of Total Screen Time, Pickups, and Total Usage by Period"))
 ```
 
 ```{r fig.height=5, fig.width=10}
 #Boxplots by period and ID
 box.TST2 = base.df %>%
     ggplot(aes(x = Period, y = Tot.Scr.Time, color = ID))+
-    geom_boxplot()
+    geom_boxplot()+
+    labs(y = "Total Screen Time")
 
 box.pickups2 = base.df %>%
     ggplot(aes(x = Period, y = Pickups, color = ID))+
@@ -199,10 +220,11 @@ box.pickups2 = base.df %>%
 
 box.score2 = base.df %>%
     ggplot(aes(x = Period, y = score, color = ID))+
-    geom_boxplot()
+    geom_boxplot()+
+    labs(y = "Total Usage")
 
 require(gridExtra)
-grid.arrange(box.TST2, box.pickups2, box.score2, ncol = 3)
+grid.arrange(box.TST2, box.pickups2, box.score2, ncol = 3, top=textGrob("Figure S2. Boxplots of Total Screen Time, Pickups, and Total Usage by Period and ID"))
 
 ```
 Pretty similar shapes here.
@@ -258,11 +280,17 @@ base.df %>%
              label.size = 0.25,
              color = "red",
              inherit.aes=FALSE,
-             size=3)
+             size=3)+
+  ggtitle("Total Usage Over Time")+
+  labs(x = "Day", y="Total Usage")
+
+
   
   
 
 ```
+
+
 ```{r}
 #Corrplot
 corr.df = base.df %>%
