@@ -164,7 +164,7 @@ t3 = model3a %>%
 
 tbl_merge(tbls = list(t2,t3),tab_spanner = c("**Model 1**", "**Model 2**")) %>%
   as_gt() %>%
-  gt::tab_header(title = "Table 3. Regression Results")
+  gt::tab_header(title = "Table S2. Regression Results")
 
 
 ### Weekday vs Weekend ###
