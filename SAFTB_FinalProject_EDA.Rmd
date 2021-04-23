@@ -5,3 +5,133 @@ date: "4/22/2021"
 output: pdf_document
 ---
 
+```{r, warnings=FALSE}
+#Packages
+library(tidyverse) #processing
+library(circular) #angular pickup time
+library(lubridate) #handle date data easily
+library(MASS) #
+library(mice) #imputation
+library(gridExtra) #arrange plots
+library(webshot) #arrange plots
+library(grid) #arrange plots
+library(gtsummary) #nice tables
+library(psych) #summary stats
+
+```
+
+```{r}
+### Reading in the data ###
+base.df = read.csv(file = "crossover_full_deid.csv", header=TRUE)
+
+cov.df = read.csv(file = "baseline_full_deid.csv", header=TRUE)
+```
+
+```{r}
+### Processing ###
+
+#Fix mistake in DOW
+base.df$Day = ifelse(base.df$Day == "Fi", "Fr", base.df$Day)
+
+#Column for day of observation and score
+base.df = base.df %>%
+  mutate(index = rep(1:25,24),
+         score = 0.4*Tot.Scr.Time + 0.6*Pickups)
+
+#Column for treatment sequence
+seq.df = as.data.frame(matrix(base.df$Treatment,ncol=24,nrow=25), stringsAsFactors = FALSE)
+seq.vec = rep("AAA", 24)
+
+for(i in 1:24) {
+  seq.vec[i] = paste(seq.df[15,i],seq.df[22,i],collapse="")
+}
+
+base.df$Sequence = rep(seq.vec, each=25)
+
+#Column for team
+#?????
+
+#Add covariate data to main df
+base.df = merge(base.df,cov.df, by="pseudo_id")
+
+
+#Process Interval Data
+base.df$X1st.Pickup = as.POSIXct(base.df$X1st.Pickup, format="%H:%M", tz="UTC")
+
+base.df = base.df %>%
+    mutate(X1st.Pickup = ifelse(pseudo_id == 1, X1st.Pickup + minutes(30), X1st.Pickup))
+
+base.df$X1st.Pickup = as.POSIXct(base.df$X1st.Pickup, origin = '1970-01-01', tz="UTC")
+
+base.df = base.df %>%
+    mutate(X1st.Pickup = ifelse(pseudo_id == 9, X1st.Pickup + hours(1), X1st.Pickup))
+
+base.df$X1st.Pickup = as.POSIXct(base.df$X1st.Pickup, origin = '1970-01-01', tz="UTC")
+
+#Column for angular pickup time
+base.df = base.df %>%
+  mutate(Pickup.1st.angular = (hour(X1st.Pickup)*60+minute(X1st.Pickup))/(24*60)*360)
+
+# Impute NAs in first pickups
+imp = mice(subset(base.df, select = -X1st.Pickup))
+comp.pickup = complete(imp)
+
+base.df$Pickup.1st.angular = comp.pickup$Pickup.1st.angular
+
+#Verify data is clean and makes sense
+levels(as.factor(base.df$Day))
+
+levels(as.factor(base.df$Treatment))
+
+levels(as.factor(base.df$Period))
+
+levels(as.factor(base.df$Sequence))
+
+```
+
+
+```{r}
+#### Descriptive stats ####
+
+```
+
+
+```{r}
+#Combined DF - Period
+
+
+#Combined DF - Period and ID
+
+```
+
+
+```{r}
+### Plots ###
+
+#Boxplot of relevant variables by period
+
+```
+
+```{r fig.height=5, fig.width=10}
+#Boxplots by period and ID
+
+
+```
+
+
+```{r}
+#Corrplot
+
+```
+
+
+```{r}
+#ACF - overall
+
+```
+
+
+```{r}
+#Circular plot
+
+```
