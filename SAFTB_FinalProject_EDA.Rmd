@@ -1,0 +1,7 @@
+---
+title: "Biostat 620 - Final Project EDA"
+author: "Spencer Haupert"
+date: "4/22/2021"
+output: pdf_document
+---
+
