@@ -136,7 +136,7 @@ base.df %>%
                            sex ~ "Male"),
               type = list(age ~ 'continuous'),
               statistic = list(age ~ "{median} ({p25}, {p75})")) %>%
-  add_p() %>%
+  add_p(exclude = c(age, sex)) %>%
   add_overall() %>%
   modify_spanning_header(c("stat_1", "stat_2", "stat_3", "stat_4", "stat_5", "stat_6") ~ "**Sequence**") %>%
   modify_header(label ~ "**Variable**") %>%
@@ -189,6 +189,7 @@ box.score2 = base.df %>%
 
 
 box.score3 = base.df %>%
+    mutate(sex = ifelse(sex==1, "Male", "Female")) %>%
     ggplot(aes(x = Treatment, y = score, color = as.factor(sex)))+
     geom_boxplot()+
     labs(y = "Total Usage") +
@@ -236,7 +237,7 @@ base.df %>%
              color = "red",
              inherit.aes=FALSE,
              size=3)+
-  ggtitle("Figure 3. Total Usage Over Time by Sequence Group")+
+  ggtitle("Figure S1. Total Usage Over Time by Sequence Group")+
   labs(x = "Day", y="Total Usage")+
   scale_color_discrete(name = "Sequence")
 
@@ -280,10 +281,14 @@ acf(acf.df$med.score)
   
   
 #scatter plot facetted by sex
-  ggplot(data=base.df, aes(x = .40 * Tot.Scr.Time, y = .6 * Pickups, color = Sequence)) + 
+
+base.df %>%
+  mutate(sex = ifelse(sex==1, "Male", "Female")) %>%
+  ggplot( aes(x = .40 * Tot.Scr.Time, y = .6 * Pickups, color = Sequence)) + 
     geom_point () +
     facet_grid(~sex)+
-    ggtitle("Scatterplots of Weighted Total Screen Time vs Weighted Pickups by Sequence and Sex")
+    ggtitle("Figure 4. Scatterplots of Weighted Total Screen Time vs Weighted Pickups")+
+    labs(x = "Weighted Total Screen Time", y="Weighted Pickups")
 
 ```
 
